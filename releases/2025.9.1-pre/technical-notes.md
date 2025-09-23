@@ -82,6 +82,17 @@ ADD COLUMN cor_rgb TEXT NULL;
 ALTER TABLE convenio
 ADD COLUMN cor_css TEXT NULL;
 
+-- Criação de nova tabela: estabelecimento
+CREATE TABLE estabelecimento (
+    id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    nome VARCHAR NOT NULL,
+    slogan VARCHAR,
+    logo_grande BYTEA,
+    logo_pequeno BYTEA
+);
+
 -- Database: postgres-atendimento
 -- Migration: migration_create_auditoria_table
 -- Descrição: Criação de tabela para auditoria de atendimentos

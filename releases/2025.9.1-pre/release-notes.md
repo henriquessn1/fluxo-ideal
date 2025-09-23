@@ -14,11 +14,15 @@ Release inicial do projeto Fluxo Ideal, estabelecendo a estrutura base para o de
 - **Infraestrutura de Dados:** Definidas 8 instâncias PostgreSQL especializadas por domínio
 - **Cache e Storage:** Implementado sistema de cache distribuído com Redis e storage de objetos com MinIO
 - **Configurações Padrão de Estabelecimento:** Adicionada capacidade de definir tipos de serviço e agendamento como padrão, facilitando a configuração inicial de novos estabelecimentos
+- **Layout Mais Limpo, Rápido e Fácil:** Nova interface com design otimizado focando em velocidade de carregamento, navegação intuitiva e visual simplificado para melhor experiência do usuário
 
 ## 🔧 Melhorias
 - **Documentação:** Criação de templates para release notes funcionais e técnicos
 - **Organização:** Estrutura de pastas organizada para releases históricas
 - **Database Estabelecimento:** Estrutura de dados otimizada para suportar configurações padrão
+- **Performance de Interface:** Otimizações significativas no tempo de carregamento das páginas com redução de elementos desnecessários
+- **Usabilidade:** Simplificação da navegação com menus mais diretos e ações mais acessíveis
+- **Responsividade:** Melhor adaptação da interface para diferentes tamanhos de tela
 
 ### 💳 Fluxo de Pagamentos
 - **Interface Renovada:** Melhorias significativas no fluxo de pagamentos com novas telas e menus mais intuitivos ([Ver imagem](images/#1.png))
@@ -48,11 +52,13 @@ Release inicial do projeto Fluxo Ideal, estabelecendo a estrutura base para o de
 ## 📊 Impactos para Usuários
 
 ### Mudanças na Interface
+- **Layout Geral:** Nova interface mais limpa, rápida e intuitiva com design simplificado e otimizado para melhor performance
 - **Fluxo de Pagamentos:** Novas telas com design renovado e navegação mais intuitiva
 - **Sistema de Agendamentos:** Interface otimizada para cadastro de retornos com campos pré-preenchidos
 - **Atendimento:** Layout padronizado em todas as telas, reorganização de menus, exibição de informações do cliente (data de nascimento e idade) e novas ações de cancelar/resetar
 - **Menu Serviços:** Novo menu dedicado criado e validado
 - **Exames:** Ajustes visuais e de usabilidade na interface
+- **Responsividade:** Melhor adaptação automática para diferentes dispositivos e tamanhos de tela
 
 ### Mudanças no Comportamento
 - **Agendamentos:** Serviços padrão são automaticamente pré-selecionados em novos agendamentos
