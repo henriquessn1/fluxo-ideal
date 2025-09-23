@@ -93,6 +93,10 @@ CREATE TABLE estabelecimento (
     logo_pequeno BYTEA
 );
 
+-- ⚠️ IMPORTANTE: Após criar a tabela, É OBRIGATÓRIO inserir ao menos 1 registro
+-- Exemplo:
+-- INSERT INTO estabelecimento (nome) VALUES ('Nome do Estabelecimento');
+
 -- Database: postgres-atendimento
 -- Migration: migration_create_auditoria_table
 -- Descrição: Criação de tabela para auditoria de atendimentos
