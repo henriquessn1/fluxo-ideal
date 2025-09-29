@@ -114,6 +114,17 @@ CREATE TABLE atendimento_auditoria (
     PRIMARY KEY (id),
     FOREIGN KEY(atendimento_id) REFERENCES atendimentos (id)
 );
+
+-- Criar a tabela prontuario_adendo
+CREATE TABLE prontuario_adendo (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atendimento_id UUID REFERENCES atendimentos(id),
+    cliente_id UUID NOT NULL,
+    usuario TEXT NOT NULL,
+    dados JSONB NOT NULL
+);
 ```
 
 ### Grants e Permissões
@@ -123,7 +134,27 @@ CREATE TABLE atendimento_auditoria (
 
 ### Índices e Otimizações
 ```sql
--- Nenhum índice criado nesta release
+-- Database: postgres-atendimento
+-- Índices para tabela prontuario_adendo
+CREATE INDEX idx_prontuario_adendo_atendimento_id ON prontuario_adendo(atendimento_id);
+CREATE INDEX idx_prontuario_adendo_cliente_id ON prontuario_adendo(cliente_id);
+CREATE INDEX idx_prontuario_adendo_created_at ON prontuario_adendo(created_at);
+CREATE INDEX idx_prontuario_adendo_updated_at ON prontuario_adendo(updated_at);
+CREATE INDEX idx_prontuario_adendo_usuario ON prontuario_adendo(usuario);
+
+-- Função e trigger para updated_at automático
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$ language 'plpgsql';
+
+CREATE TRIGGER update_prontuario_adendo_updated_at
+    BEFORE UPDATE ON prontuario_adendo
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 ```
 
 ## 🔐 Permissões de Sistema
