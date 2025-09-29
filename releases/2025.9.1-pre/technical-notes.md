@@ -125,6 +125,25 @@ CREATE TABLE prontuario_adendo (
     usuario TEXT NOT NULL,
     dados JSONB NOT NULL
 );
+
+-- Criar tabela autocomplete
+CREATE TABLE autocomplete (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    autocompletefield_id UUID NOT NULL,
+    profissional_id UUID NOT NULL,
+    text TEXT NOT NULL,
+    category TEXT,
+    frequency INTEGER DEFAULT 0 NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+
+    -- Foreign key para profissionais
+    CONSTRAINT fk_autocomplete_profissional
+        FOREIGN KEY (profissional_id)
+        REFERENCES profissionais(id)
+        ON DELETE CASCADE
+);
 ```
 
 ### Grants e Permissões
@@ -142,6 +161,31 @@ CREATE INDEX idx_prontuario_adendo_created_at ON prontuario_adendo(created_at);
 CREATE INDEX idx_prontuario_adendo_updated_at ON prontuario_adendo(updated_at);
 CREATE INDEX idx_prontuario_adendo_usuario ON prontuario_adendo(usuario);
 
+-- Índices para tabela autocomplete
+-- Índice composto principal para a query mais comum (filtro + ordenação)
+CREATE INDEX idx_autocomplete_main_query
+    ON autocomplete(profissional_id, autocompletefield_id, is_active, frequency DESC);
+
+-- Índice para busca de texto (ilike/pattern matching)
+CREATE INDEX idx_autocomplete_text_trgm
+    ON autocomplete USING gin(text gin_trgm_ops);
+
+-- Índice simples para autocompletefield_id (queries de filtragem)
+CREATE INDEX idx_autocomplete_field
+    ON autocomplete(autocompletefield_id);
+
+-- Índice para profissional_id (foreign key lookup)
+CREATE INDEX idx_autocomplete_profissional
+    ON autocomplete(profissional_id);
+
+-- Índice para ordenação por frequency quando filtrado por is_active
+CREATE INDEX idx_autocomplete_active_frequency
+    ON autocomplete(is_active, frequency DESC)
+    WHERE is_active = true;
+
+-- Habilitar extensão pg_trgm para busca de texto eficiente (se não estiver habilitada)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Função e trigger para updated_at automático
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $
@@ -155,6 +199,26 @@ CREATE TRIGGER update_prontuario_adendo_updated_at
     BEFORE UPDATE ON prontuario_adendo
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger para atualizar updated_at automaticamente na tabela autocomplete
+CREATE OR REPLACE FUNCTION update_autocomplete_updated_at()
+RETURNS TRIGGER AS $
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_autocomplete_updated_at
+    BEFORE UPDATE ON autocomplete
+    FOR EACH ROW
+    EXECUTE FUNCTION update_autocomplete_updated_at();
+
+-- Comentários para documentação
+COMMENT ON TABLE autocomplete IS 'Armazena sugestões de autocomplete por profissional e campo';
+COMMENT ON COLUMN autocomplete.autocompletefield_id IS 'ID do campo de formulário para categorização';
+COMMENT ON COLUMN autocomplete.frequency IS 'Contador de uso para ordenação por popularidade';
+COMMENT ON COLUMN autocomplete.is_active IS 'Flag para habilitar/desabilitar sugestão';
 ```
 
 ## 🔐 Permissões de Sistema
@@ -193,6 +257,55 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
     - estabelecimento-net
   ```
 
+- **paths_prefixados.yaml:** Arquivo de configuração do middleware que define roteamento de endpoints
+  - **Localização:** Servidor (diretório do middleware)
+  - **Ação necessária:** Atualizar arquivo e reiniciar middleware
+  - **Conteúdo do arquivo:**
+  ```yaml
+  /clientes:
+    target_url: http://fluxoideal-clientes:8000/clientes
+  /profissionais:
+    target_url: http://fluxoideal-estabelecimento:8000/profissionais
+  /convenio:
+    target_url: http://fluxoideal-estabelecimento:8000/convenio
+  /board:
+    target_url: http://fluxoideal-estabelecimento:8000/board
+  /historico_conversa:
+    target_url: http://fluxoideal-interacoes:8000/historico_conversa
+  /interacoes:
+    target_url: http://fluxoideal-interacoes:8000/interacoes
+  /agendamento:
+    target_url: http://fluxoideal-agendamento:8000/agendamento
+  /bloqueio:
+    target_url: http://fluxoideal-agendamento:8000/bloqueio
+  /slots:
+    target_url: http://fluxoideal-agendamento:8000/slots
+  /atendimento:
+    target_url: http://fluxoideal-atendimento:8000/atendimento
+  /documentos:
+    target_url: http://fluxoideal-documentos:8000/documentos
+  /estabelecimento:
+    target_url: http://fluxoideal-estabelecimento:8000/estabelecimento
+  /cobranca:
+    target_url: http://fluxoideal-atendimento:8000/cobranca
+  /servicos:
+    target_url: http://fluxoideal-atendimento:8000/servicos
+  /pagamento:
+    target_url: http://fluxoideal-atendimento:8000/pagamento
+  /exames:
+    target_url: http://fluxoideal-estabelecimento:8000/exames
+  /templates:
+    target_url: http://fluxoideal-estabelecimento:8000/templates
+  /tipos:
+    target_url: http://fluxoideal-estabelecimento:8000/tipos
+  /chat:
+    target_url: http://fluxoideal-websocket-server:8000/chat
+  /notify:
+    target_url: http://fluxoideal-notification-center:8000/notify
+  /prontuario:
+    target_url: http://fluxoideal-atendimento:8000/atendimento
+  ```
+
 ## 🚀 Procedimentos de Deploy
 
 ### Ordem de Deploy
@@ -202,8 +315,10 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 4. [ ] Criar rede Docker "estabelecimento-net" se não existir
 5. [ ] Atualizar variáveis de ambiente do fluxoideal-atendimento
 6. [ ] Reconectar container fluxoideal-atendimento à rede estabelecimento-net
-7. [ ] Restart dos microserviços afetados
-8. [ ] Verificar conectividade entre microserviços
+7. [ ] Atualizar arquivo paths_prefixados.yaml no servidor
+8. [ ] Reiniciar middleware
+9. [ ] Restart dos microserviços afetados
+10. [ ] Verificar conectividade entre microserviços
 
 ### Comandos de Deploy
 ```bash
@@ -224,11 +339,18 @@ docker network create estabelecimento-net --driver bridge || echo "Rede já exis
 # Adicionar variável de ambiente ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 # Conectar à rede estabelecimento-net
 
-# Passo 6: Restart dos serviços
+# Passo 7: Atualizar arquivo paths_prefixados.yaml no servidor
+# Substituir o conteúdo do arquivo paths_prefixados.yaml com as configurações documentadas na seção "Arquivos de Configuração"
+# Localização: [diretório_do_middleware]/paths_prefixados.yaml
+
+# Passo 8: Reiniciar middleware
+docker-compose restart fluxoideal-middleware
+
+# Passo 9: Restart dos serviços
 docker-compose restart fluxoideal-atendimento
 docker-compose restart fluxoideal-interacoes
 
-# Passo 7: Verificar integração
+# Passo 10: Verificar integração
 curl -f http://fluxoideal-atendimento:8000/health
 ```
 
