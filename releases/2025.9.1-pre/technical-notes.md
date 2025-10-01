@@ -97,6 +97,18 @@ CREATE TABLE estabelecimento (
 -- Exemplo:
 -- INSERT INTO estabelecimento (nome) VALUES ('Nome do Estabelecimento');
 
+-- Criação de nova tabela: estrutura_atendimento
+CREATE TABLE estrutura_atendimento (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    estrutura JSONB NOT NULL,
+    estabelecimento_id UUID NOT NULL,
+    CONSTRAINT fk_estrutura_atendimento_estabelecimento
+        FOREIGN KEY (estabelecimento_id)
+        REFERENCES estabelecimento(id)
+);
+
 -- Database: postgres-atendimento
 -- Migration: migration_create_auditoria_table
 -- Descrição: Criação de tabela para auditoria de atendimentos
@@ -144,6 +156,43 @@ CREATE TABLE autocomplete (
         REFERENCES profissionais(id)
         ON DELETE CASCADE
 );
+
+-- Atualizar campo fim dos atendimentos finalizados
+UPDATE atendimentos SET fim = updated_at WHERE status = 'Finalizado';
+
+-- Database: postgres-documentos
+-- Migration: Ajuste na estrutura_tela da tabela documentos_dados
+-- Descrição: Ajustar o campo estrutura_tela para identificar as colunas dos grupos
+
+-- ⚠️ IMPORTANTE: Este é um ajuste manual no campo JSONB estrutura_tela
+-- A estrutura_tela deve ser atualizada para incluir informação de colunas nos grupos
+-- Cada grupo no JSONB deve conter a propriedade 'columns' identificando o layout das colunas
+-- Exemplo de estrutura esperada:
+-- {
+--   "grupos": [
+--     {
+--       "id": "grupo_id",
+--       "nome": "Nome do Grupo",
+--       "columns": 2,  // <-- Propriedade que identifica número de colunas
+--       "campos": [...]
+--     }
+--   ]
+-- }
+
+-- Não há comando SQL automático para esta migration
+-- Requer ajuste manual ou script de migração de dados específico
+
+-- Database: postgres-documentos
+-- Migration: Alteração de coluna documentos_gerados para arquivos_gerados
+-- Descrição: Remover coluna documentos_gerados e adicionar coluna arquivos_gerados do tipo JSONB
+
+-- SQL de Upgrade (aplicar alterações):
+
+-- Remover coluna documentos_gerados
+ALTER TABLE documentos_dados DROP COLUMN documentos_gerados;
+
+-- Adicionar coluna arquivos_gerados do tipo JSONB
+ALTER TABLE documentos_dados ADD COLUMN arquivos_gerados JSONB;
 ```
 
 ### Grants e Permissões
@@ -304,21 +353,26 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
     target_url: http://fluxoideal-notification-center:8000/notify
   /prontuario:
     target_url: http://fluxoideal-atendimento:8000/atendimento
+  /autocomplete:
+    target_url: http://fluxoideal-estabelecimento:8000/autocomplete
+  /estrutura-atendimento:
+    target_url: http://fluxoideal-estabelecimento:8000//estrutura-atendimento
   ```
 
 ## 🚀 Procedimentos de Deploy
 
 ### Ordem de Deploy
 1. [X] Database migrations (postgres-estabelecimento)
-2. [ ] Database migrations (postgres-atendimento - tabela auditoria)
-3. [ ] Renomear containers (integracos → interacoes)
-4. [ ] Criar rede Docker "estabelecimento-net" se não existir
-5. [ ] Atualizar variáveis de ambiente do fluxoideal-atendimento
-6. [ ] Reconectar container fluxoideal-atendimento à rede estabelecimento-net
-7. [ ] Atualizar arquivo paths_prefixados.yaml no servidor
-8. [ ] Reiniciar middleware
-9. [ ] Restart dos microserviços afetados
-10. [ ] Verificar conectividade entre microserviços
+2. [ ] Database migrations (postgres-atendimento - tabela auditoria e autocomplete)
+3. [ ] Ajuste manual na estrutura_tela da tabela documentos_dados (postgres-documentos)
+4. [ ] Renomear containers (integracos → interacoes)
+5. [ ] Criar rede Docker "estabelecimento-net" se não existir
+6. [ ] Atualizar variáveis de ambiente do fluxoideal-atendimento
+7. [ ] Reconectar container fluxoideal-atendimento à rede estabelecimento-net
+8. [ ] Atualizar arquivo paths_prefixados.yaml no servidor
+9. [ ] Reiniciar middleware
+10. [ ] Restart dos microserviços afetados
+11. [ ] Verificar conectividade entre microserviços
 
 ### Comandos de Deploy
 ```bash
@@ -328,29 +382,34 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 # Passo 2: Executar migration no postgres-atendimento
 # (Comandos SQL já documentados na seção Migrations)
 
-# Passo 3: Renomear containers
+# Passo 3: Ajustar estrutura_tela da tabela documentos_dados (postgres-documentos)
+# ⚠️ IMPORTANTE: Ajuste manual necessário no campo JSONB estrutura_tela
+# Adicionar propriedade 'columns' em cada grupo para identificar número de colunas
+# Este passo requer script customizado ou ajuste manual conforme documentado nas Migrations
+
+# Passo 4: Renomear containers
 docker rename fluxoideal-integracos fluxoideal-interacoes || echo "Container já renomeado"
 docker rename postgres-integracos postgres-interacoes || echo "Container já renomeado"
 
-# Passo 4: Criar rede Docker se necessário
+# Passo 5: Criar rede Docker se necessário
 docker network create estabelecimento-net --driver bridge || echo "Rede já existe"
 
-# Passo 5: Atualizar container fluxoideal-atendimento
+# Passo 6: Atualizar container fluxoideal-atendimento
 # Adicionar variável de ambiente ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 # Conectar à rede estabelecimento-net
 
-# Passo 7: Atualizar arquivo paths_prefixados.yaml no servidor
+# Passo 8: Atualizar arquivo paths_prefixados.yaml no servidor
 # Substituir o conteúdo do arquivo paths_prefixados.yaml com as configurações documentadas na seção "Arquivos de Configuração"
 # Localização: [diretório_do_middleware]/paths_prefixados.yaml
 
-# Passo 8: Reiniciar middleware
+# Passo 9: Reiniciar middleware
 docker-compose restart fluxoideal-middleware
 
-# Passo 9: Restart dos serviços
+# Passo 10: Restart dos serviços
 docker-compose restart fluxoideal-atendimento
 docker-compose restart fluxoideal-interacoes
 
-# Passo 10: Verificar integração
+# Passo 11: Verificar integração
 curl -f http://fluxoideal-atendimento:8000/health
 ```
 
