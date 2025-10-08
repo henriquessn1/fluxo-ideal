@@ -26,7 +26,7 @@
 |----------|--------|------------|--------|
 | postgres-agendamentos | 11.10-bca9 | - | No changes |
 | postgres-atendimento | 15 | migration_create_auditoria_table | Updated (em teste) |
-| postgres-clientes | 15 | - | No changes |
+| postgres-clientes | 15 | migration_create_clientes_mergeado_table + migration_enable_trigram_similarity | Updated (em teste) |
 | postgres-documentos | 15 | - | No changes |
 | postgres-estabelecimento | 11.10-bca9 | 15 + migration_add_padrao_columns | Updated (em teste) |
 | postgres-interacoes | 11.10-bca9 | - | Container renamed (integracos→interacoes) |
@@ -159,6 +159,92 @@ CREATE TABLE autocomplete (
 
 -- Atualizar campo fim dos atendimentos finalizados
 UPDATE atendimentos SET fim = updated_at WHERE status = 'Finalizado';
+
+-- Atualizar campo fim dos atendimentos cancelados
+UPDATE atendimentos SET fim = updated_at WHERE status = 'Cancelado';
+
+-- Database: postgres-clientes
+-- Migration: migration_create_clientes_mergeado_table
+-- Descrição: Criação de tabela para gestão de clientes duplicados/mergeados
+
+CREATE TABLE clientes_mergeado (
+    id UUID NOT NULL,
+    cliente_id_atual UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    nome VARCHAR NOT NULL,
+    email VARCHAR,
+    telefone VARCHAR,
+    data_nascimento DATE,
+    cpf VARCHAR,
+    rua VARCHAR,
+    cep VARCHAR,
+    cidade VARCHAR,
+    estado VARCHAR,
+    whatsapp BOOLEAN DEFAULT false NOT NULL,
+    revisado BOOLEAN DEFAULT false NOT NULL,
+    tomar_acao VARCHAR,
+    ultima_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    status VARCHAR,
+    criado_por VARCHAR,
+    revisado_por VARCHAR,
+    atualizado_por VARCHAR,
+    genero VARCHAR,
+    numero VARCHAR,
+    bairro VARCHAR,
+    canal_preferencial VARCHAR,
+    codigo_ddi VARCHAR DEFAULT '55',
+    complemento VARCHAR,
+    CONSTRAINT clientes_mergeado_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_clientes_mergeado_cliente_atual FOREIGN KEY(cliente_id_atual) REFERENCES clientes (id)
+);
+
+-- Database: postgres-clientes
+-- Migration: migration_enable_trigram_similarity
+-- Descrição: Habilitar extensão pg_trgm e criar índice para busca de similaridade em nomes
+
+-- ⬆️ Upgrade (aplicar migração)
+
+-- Habilitar extensão pg_trgm (trigram similarity)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Criar índice GIN para busca de similaridade em clientes.nome
+CREATE INDEX IF NOT EXISTS idx_clientes_nome_trgm
+ON clientes USING GIN (nome gin_trgm_ops);
+
+-- ⬇️ Downgrade (reverter migração)
+-- Para reverter esta migração, execute os seguintes comandos:
+
+-- Remover índice
+-- DROP INDEX IF EXISTS idx_clientes_nome_trgm;
+
+-- Remover extensão (com CASCADE para dependências)
+-- DROP EXTENSION IF EXISTS pg_trgm CASCADE;
+
+-- 📚 Documentação Adicional
+--
+-- O que é pg_trgm:
+-- - Extensão oficial do PostgreSQL para busca de similaridade de texto
+-- - Usa algoritmo de trigramas (sequências de 3 caracteres consecutivos)
+-- - Permite criar índices GIN ou GiST para buscas rápidas
+--
+-- Índice GIN (Generalized Inverted Index):
+-- - Tipo de índice otimizado para busca de texto e arrays
+-- - Permite queries de similaridade usando o operador % ou função similarity()
+-- - Espaço em disco: ~2-3x o tamanho da coluna indexada
+--
+-- Funções disponíveis após habilitar pg_trgm:
+-- - similarity('Joseane', 'Joseane Rocha')  -- retorna 0.0 a 1.0
+-- - 'Joseane' % 'Joseane Rocha'             -- operador de similaridade (threshold padrão 0.3)
+-- - 'Joseane' <-> 'Joseane Rocha'           -- distância de trigramas
+--
+-- Query de teste manual:
+-- SELECT
+--     nome,
+--     similarity(nome, 'Joseane') as score
+-- FROM clientes
+-- WHERE similarity(nome, 'Joseane') > 0.3
+-- ORDER BY score DESC
+-- LIMIT 10;
 
 -- Database: postgres-documentos
 -- Migration: Ajuste na estrutura_tela da tabela documentos_dados
@@ -357,6 +443,10 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
     target_url: http://fluxoideal-estabelecimento:8000/autocomplete
   /estrutura-atendimento:
     target_url: http://fluxoideal-estabelecimento:8000//estrutura-atendimento
+  /atendimento-dashboard:
+    target_url: http://fluxoideal-atendimento:8000/atendimento-dashboard
+  /agendamento-dashboard:
+    target_url: http://fluxoideal-agendamento:8000/agendamento-dashboard
   ```
 
 ## 🚀 Procedimentos de Deploy
@@ -364,15 +454,16 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 ### Ordem de Deploy
 1. [X] Database migrations (postgres-estabelecimento)
 2. [ ] Database migrations (postgres-atendimento - tabela auditoria e autocomplete)
-3. [ ] Ajuste manual na estrutura_tela da tabela documentos_dados (postgres-documentos)
-4. [ ] Renomear containers (integracos → interacoes)
-5. [ ] Criar rede Docker "estabelecimento-net" se não existir
-6. [ ] Atualizar variáveis de ambiente do fluxoideal-atendimento
-7. [ ] Reconectar container fluxoideal-atendimento à rede estabelecimento-net
-8. [ ] Atualizar arquivo paths_prefixados.yaml no servidor
-9. [ ] Reiniciar middleware
-10. [ ] Restart dos microserviços afetados
-11. [ ] Verificar conectividade entre microserviços
+3. [ ] Database migrations (postgres-clientes - tabela clientes_mergeado)
+4. [ ] Ajuste manual na estrutura_tela da tabela documentos_dados (postgres-documentos)
+5. [ ] Renomear containers (integracos → interacoes)
+6. [ ] Criar rede Docker "estabelecimento-net" se não existir
+7. [ ] Atualizar variáveis de ambiente do fluxoideal-atendimento
+8. [ ] Reconectar container fluxoideal-atendimento à rede estabelecimento-net
+9. [ ] Atualizar arquivo paths_prefixados.yaml no servidor
+10. [ ] Reiniciar middleware
+11. [ ] Restart dos microserviços afetados
+12. [ ] Verificar conectividade entre microserviços
 
 ### Comandos de Deploy
 ```bash
@@ -382,34 +473,37 @@ ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 # Passo 2: Executar migration no postgres-atendimento
 # (Comandos SQL já documentados na seção Migrations)
 
-# Passo 3: Ajustar estrutura_tela da tabela documentos_dados (postgres-documentos)
+# Passo 3: Executar migration no postgres-clientes
+# (Comandos SQL já documentados na seção Migrations)
+
+# Passo 4: Ajustar estrutura_tela da tabela documentos_dados (postgres-documentos)
 # ⚠️ IMPORTANTE: Ajuste manual necessário no campo JSONB estrutura_tela
 # Adicionar propriedade 'columns' em cada grupo para identificar número de colunas
 # Este passo requer script customizado ou ajuste manual conforme documentado nas Migrations
 
-# Passo 4: Renomear containers
+# Passo 5: Renomear containers
 docker rename fluxoideal-integracos fluxoideal-interacoes || echo "Container já renomeado"
 docker rename postgres-integracos postgres-interacoes || echo "Container já renomeado"
 
-# Passo 5: Criar rede Docker se necessário
+# Passo 6: Criar rede Docker se necessário
 docker network create estabelecimento-net --driver bridge || echo "Rede já existe"
 
-# Passo 6: Atualizar container fluxoideal-atendimento
+# Passo 7: Atualizar container fluxoideal-atendimento
 # Adicionar variável de ambiente ESTABELECIMENTO_URL=http://fluxoideal-estabelecimento:8000/
 # Conectar à rede estabelecimento-net
 
-# Passo 8: Atualizar arquivo paths_prefixados.yaml no servidor
+# Passo 9: Atualizar arquivo paths_prefixados.yaml no servidor
 # Substituir o conteúdo do arquivo paths_prefixados.yaml com as configurações documentadas na seção "Arquivos de Configuração"
 # Localização: [diretório_do_middleware]/paths_prefixados.yaml
 
-# Passo 9: Reiniciar middleware
+# Passo 10: Reiniciar middleware
 docker-compose restart fluxoideal-middleware
 
-# Passo 10: Restart dos serviços
+# Passo 11: Restart dos serviços
 docker-compose restart fluxoideal-atendimento
 docker-compose restart fluxoideal-interacoes
 
-# Passo 11: Verificar integração
+# Passo 12: Verificar integração
 curl -f http://fluxoideal-atendimento:8000/health
 ```
 
