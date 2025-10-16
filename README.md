@@ -3,14 +3,21 @@ Solução para o seu fluxo de atendimento ao cliente
 
 ## 📋 Últimas Releases
 
-### [2025.9.1-pre](releases/2025.9.1-pre/release-notes.md) - Em Desenvolvimento
+### [2025.10.2-pre](releases/2025.10.2-pre/release-notes.md) - Em Desenvolvimento
 **Status:** 🔄 Pré-release
-**Data:** 15/09/2025
-- Setup inicial do projeto e catalogação de componentes
-- 10 microserviços + 8 databases + infraestrutura completa
-- Configurações padrão para estabelecimentos
-- Migration postgres-estabelecimento: colunas 'padrao' em tipo_servico e tipo_agendamento
-- Novo padrão de versionamento: ANO.MÊS.CONTADOR
+**Data:** TBD
+- Próxima release em desenvolvimento
+- Aguardando novas funcionalidades e melhorias
+
+### [2025.10.1](releases/2025.10.1/release-notes.md) - Versão Estável ✅
+**Status:** ✅ Release Oficial
+**Data:** 16/10/2025
+- Upgrade massivo: PostgreSQL 11.x → 15 (agendamentos, estabelecimento, interacoes) + 15 → 16 (mensageria)
+- 11 microserviços atualizados + 9 databases + 5 ferramentas de administração
+- Sistema de merge de clientes com busca por similaridade (pg_trgm + índice GIN)
+- Tabelas de auditoria, prontuário adendo e autocomplete no atendimento
+- Novas ferramentas: Adminer, Portainer, RedisInsight, n8n, Ghost
+- Novo componente: site-bia (v0.5.010)
 
 ---
 

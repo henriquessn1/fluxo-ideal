@@ -1,7 +1,7 @@
-# Release Notes - Fluxo Ideal 2025.9.1-pre
+# Release Notes - Fluxo Ideal 2025.10.1
 
-**Data de Release:** 15/09/2025
-**Status:** [X] Pré-release [ ] Release Oficial
+**Data de Release:** 16/10/2025
+**Status:** [ ] Pré-release [X] Release Oficial
 **Release Manager:** Claude Code
 
 ## Resumo Executivo

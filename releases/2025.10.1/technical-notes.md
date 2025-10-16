@@ -1,7 +1,7 @@
-# Technical Notes - Fluxo Ideal 2025.9.1-pre
+# Technical Notes - Fluxo Ideal 2025.10.1
 
-**Data de Release:** 15/09/2025
-**Status:** [X] Pré-release [ ] Release Oficial
+**Data de Release:** 16/10/2025
+**Status:** [ ] Pré-release [X] Release Oficial
 **Release Manager:** Claude Code
 **DevOps Lead:** TBD
 
@@ -10,36 +10,47 @@
 ### Microserviços
 | Microserviço | Versão Anterior | Versão Atual | Mudanças |
 |--------------|-----------------|--------------|----------|
-| fluxoideal-agendamento | v0.7.344 | v0.7.314 | Minor (em teste) |
-| fluxoideal-atendimento | v0.7.673 | v0.7.671 | Patch (em teste) |
-| fluxoideal-central | v0.5.051 | v0.5.051 | No changes |
-| fluxoideal-clientes | v0.7.440 | v0.7.440 | No changes |
-| fluxoideal-documentos | v0.7.788 | v0.7.770 | Minor (em teste) |
-| fluxoideal-estabelecimento | v0.8.165 | v0.8.166 | Patch (em teste) |
-| fluxoideal-interacoes | v0.6.520 | v0.6.520 | Container renamed (integracos→interacoes) |
-| fluxoideal-middleware | v0.6.421 | v0.96.410 | Major (em teste) |
+| fluxoideal-agendamento | v0.7.344 | v0.7.360 | Minor update |
+| fluxoideal-atendimento | v0.7.673 | v0.7.760 | Minor update |
+| fluxoideal-central | v0.5.051 | v0.1.004 | Major version rollback |
+| fluxoideal-clientes | v0.7.440 | v0.7.477 | Patch update |
+| fluxoideal-documentos | v0.7.788 | v0.7.809 | Patch update |
+| fluxoideal-estabelecimento | v0.8.165 | v0.8.201 | Patch update |
+| fluxoideal-interacoes | v0.6.520 | v0.6.532 | Patch update |
+| fluxoideal-middleware | v0.6.421 | v0.96.421 | Major update |
 | fluxoideal-notification-center | v0.6.303 | v0.6.303 | No changes |
 | fluxoideal-websocket-server | v0.7.073 | v0.7.073 | No changes |
+| site-bia | - | v0.5.010 | New component |
 
 ### Databases
-| Database | Versão | Migrations | Status |
-|----------|--------|------------|--------|
-| postgres-agendamentos | 11.10-bca9 | - | No changes |
-| postgres-atendimento | 15 | migration_create_auditoria_table | Updated (em teste) |
-| postgres-clientes | 15 | migration_create_clientes_mergeado_table + migration_enable_trigram_similarity | Updated (em teste) |
-| postgres-documentos | 15 | - | No changes |
-| postgres-estabelecimento | 11.10-bca9 | 15 + migration_add_padrao_columns | Updated (em teste) |
-| postgres-interacoes | 11.10-bca9 | - | Container renamed (integracos→interacoes) |
-| postgres-keycloak | 15 | 13 | Version change (em teste) |
-| postgres-mensageria | 15 | 16 | Version upgrade (em teste) |
+| Database | Versão Anterior | Versão Atual | Migrations | Status |
+|----------|-----------------|--------------|------------|--------|
+| postgres-agendamentos | 11.10-bca9 | 15 | - | Version upgrade |
+| postgres-atendimento | 15 | 15 | migration_create_auditoria_table + prontuario_adendo + autocomplete | Updated |
+| postgres-clientes | 15 | 15 | migration_create_clientes_mergeado_table + migration_enable_trigram_similarity | Updated |
+| postgres-documentos | 15 | 15 | documentos_gerados → arquivos_gerados (JSONB) | Updated |
+| postgres-estabelecimento | 11.10-bca9 | 15 | migration_add_padrao_columns + estabelecimento + estrutura_atendimento | Version upgrade + Updated |
+| postgres-interacoes | 11.10-bca9 | 15 | - | Version upgrade |
+| postgres-keycloak | 13 | 13 | - | No changes |
+| postgres-mensageria | 15 | 16 | - | Version upgrade |
+| n8n-postgres | - | 13 | - | New component |
 
 ### Cache e Storage
 | Componente | Versão Anterior | Versão Atual | Status |
 |------------|-----------------|--------------|--------|
-| redis-cache | 6.2-alpine | - | No changes (em teste) |
+| redis-cache | 6.2-alpine | (sem tag; imagem por ID) | Updated |
 | redis-documentos | 7 | 7 | No changes |
-| redis-mensageria | 7 | 7 | No changes |
-| s3-s3-23-minio-1 | RELEASE.2025-03-12T18-04-18Z | RELEASE.2025-03-12T18-04-18Z | No changes |
+| redis-mensageria | 7 | (sem tag; imagem por ID) | Updated |
+| s3-s3_minio-1 | RELEASE.2025-03-12T18-04-18Z | RELEASE.2025-03-12T18-04-18Z | No changes |
+
+### Ferramentas de Administração e Desenvolvimento
+| Ferramenta | Versão | Notas |
+|------------|--------|-------|
+| adminer | latest | Database management tool |
+| portainer | ce:latest | Container management UI |
+| redisinsight | latest | Redis GUI |
+| n8n-n8n-1 | latest | Workflow automation |
+| ghost | 5-alpine | CMS/Blog platform |
 
 ### Dependências Externas
 | Dependência | Versão | Notas |
@@ -61,6 +72,20 @@
   - `fluxoideal-integracos` → `fluxoideal-interacoes`
   - `postgres-integracos` → `postgres-interacoes`
 - **Sistema de Auditoria:** Implementação de tabela de auditoria para rastreamento de alterações em atendimentos com campos JSONB para dados antes/depois das mudanças
+- **Upgrade de Databases:** Migração em massa de PostgreSQL 11.x para PostgreSQL 15 nos principais databases:
+  - postgres-agendamentos: 11.10-bca9 → 15
+  - postgres-estabelecimento: 11.10-bca9 → 15
+  - postgres-interacoes: 11.10-bca9 → 15
+  - postgres-mensageria: 15 → 16
+- **Ferramentas de Administração:** Adicionados containers para gestão e monitoramento:
+  - **Adminer:** Interface web para gestão de databases
+  - **Portainer:** UI para gerenciamento de containers Docker
+  - **RedisInsight:** GUI para monitoramento e análise de Redis
+  - **n8n:** Plataforma de automação de workflows
+  - **Ghost:** CMS para blog e documentação
+- **Novo Componente:** site-bia (v0.5.010) adicionado ao ecossistema
+- **Sistema de Merge de Clientes:** Implementação de tabela `clientes_mergeado` para gestão de clientes duplicados com rastreamento completo de revisão
+- **Busca Avançada de Clientes:** Habilitada extensão pg_trgm com índice GIN para busca por similaridade de nomes (fuzzy search)
 
 ## 🗄️ Comandos de Database
 
